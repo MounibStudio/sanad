@@ -1,0 +1,219 @@
+{% extends "core/base.html" %}
+
+{% block title %}سند – اسأل سؤال{% endblock %}
+
+{# ── Apply a11y overrides via the existing base.html hook ── #}
+{% block extra_head %}
+{% if a11y.high_contrast %}
+<style>
+  body   { background-color: #000 !important; color: #fff !important; }
+  header { background-color: #111 !important; }
+  footer { color: #aaa !important; border-color: #444 !important; }
+  .card  { background-color: #1a1a1a !important; border-color: #444 !important; }
+</style>
+{% endif %}
+{% if a11y.font_size == 'large' %}
+<style>body { font-size: 1.375rem !important; }</style>
+{% elif a11y.font_size == 'xlarge' %}
+<style>body { font-size: 1.75rem !important; }</style>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+
+{# ── Accessibility bar ── #}
+{% include "accessibility/_settings_bar.html" %}
+
+{# ── Page heading ── #}
+<h1 class="text-3xl font-bold mb-6 {% if a11y.high_contrast %}text-white{% else %}text-green-800{% endif %}">
+  اسأل سؤالك بالدارجة
+</h1>
+
+{# ── Mic section ── #}
+<div class="flex flex-col items-center gap-4 mb-8">
+
+  {# Big mic button #}
+  <button id="mic-btn" type="button"
+    aria-label="اضغط للتسجيل الصوتي"
+    class="w-36 h-36 rounded-full shadow-xl flex items-center justify-center
+           transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-green-400
+           {% if a11y.high_contrast %}bg-yellow-300 text-black hover:bg-yellow-200
+           {% else %}bg-green-700 text-white hover:bg-green-600{% endif %}">
+    <svg id="mic-icon" xmlns="http://www.w3.org/2000/svg"
+         class="w-20 h-20" fill="none" viewBox="0 0 24 24"
+         stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+      <path stroke-linecap="round" stroke-linejoin="round"
+        d="M12 18.75a6 6 0 0 0 6-6v-1.5m-6 7.5a6 6 0 0 1-6-6v-1.5
+           m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 0 1-3-3V4.5a3 3
+           0 1 1 6 0v8.25a3 3 0 0 1-3 3Z"/>
+    </svg>
+  </button>
+
+  <p id="mic-status" class="text-base opacity-70">اضغط على الميكروفون للتسجيل</p>
+
+</div>
+
+{# ── Question form ── #}
+<form method="post" id="ask-form" class="space-y-4">
+  {% csrf_token %}
+
+  <label for="question_text" class="block font-semibold">
+    أو اكتب سؤالك هنا:
+  </label>
+
+  <textarea
+    id="question_text"
+    name="question_text"
+    rows="3"
+    placeholder="مثلاً: كيفاش نجدد بطاقة الوطنية؟"
+    class="w-full rounded-2xl border p-4 resize-none text-inherit leading-relaxed
+           focus:outline-none focus:ring-2 focus:ring-green-500
+           {% if a11y.high_contrast %}bg-gray-900 border-gray-500 text-white placeholder-gray-400
+           {% else %}border-gray-300 bg-white{% endif %}"
+  >{{ question }}</textarea>
+
+  <button type="submit"
+    class="w-full py-4 rounded-2xl text-xl font-bold shadow-md transition-colors
+           {% if a11y.high_contrast %}bg-yellow-300 text-black hover:bg-yellow-200
+           {% else %}bg-green-700 text-white hover:bg-green-600{% endif %}">
+    ابحث عن الجواب
+  </button>
+</form>
+
+{# ── Answer section ── #}
+{% if answer %}
+<div id="answer-box"
+     class="card mt-8 p-6 rounded-2xl border shadow-md
+            {% if a11y.high_contrast %}bg-gray-900 border-gray-500 text-white
+            {% else %}bg-green-50 border-green-200{% endif %}">
+
+  <div class="flex items-center justify-between mb-3">
+    <h2 class="text-xl font-bold {% if a11y.high_contrast %}text-yellow-300{% else %}text-green-800{% endif %}">
+      الجواب:
+    </h2>
+    <button id="speak-btn" type="button" aria-label="استمع للجواب"
+      class="flex items-center gap-2 px-4 py-2 rounded-xl text-base font-semibold shadow
+             {% if a11y.high_contrast %}bg-yellow-300 text-black hover:bg-yellow-200
+             {% else %}bg-green-700 text-white hover:bg-green-600{% endif %}">
+      <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none"
+           viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+        <path stroke-linecap="round" stroke-linejoin="round"
+          d="M19.114 5.636a9 9 0 0 1 0 12.728M16.463 8.288a5.25 5.25 0 0 1 0
+             7.424M6.75 8.25l4.72-4.72a.75.75 0 0 1 1.28.53v15.88a.75.75 0 0
+             1-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.009
+             9.009 0 0 1 2.25 12c0-.83.112-1.633.322-2.396C2.806 8.756
+             3.63 8.25 4.51 8.25H6.75Z"/>
+      </svg>
+      استمع
+    </button>
+  </div>
+
+  <p id="answer-text" class="leading-loose text-lg">{{ answer }}</p>
+</div>
+{% endif %}
+
+<div class="mt-6">
+  <a href="{% url 'core:home' %}"
+     class="{% if a11y.high_contrast %}text-yellow-300{% else %}text-green-700{% endif %} underline text-base">
+    ← العودة للرئيسية
+  </a>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+(function () {
+  "use strict";
+
+  /* ── SpeechRecognition (mic button) ── */
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const micBtn    = document.getElementById("mic-btn");
+  const micStatus = document.getElementById("mic-status");
+  const textarea  = document.getElementById("question_text");
+
+  if (SpeechRecognition && micBtn) {
+    const recognition = new SpeechRecognition();
+    recognition.lang        = "ar-MA";
+    recognition.continuous  = false;
+    recognition.interimResults = true;
+
+    let recording = false;
+
+    micBtn.addEventListener("click", () => {
+      if (recording) {
+        recognition.stop();
+        return;
+      }
+      recognition.start();
+    });
+
+    recognition.onstart = () => {
+      recording = true;
+      micBtn.classList.add("scale-110", "ring-4", "ring-red-400");
+      micStatus.textContent = "🔴 جاري التسجيل… تكلم الآن";
+    };
+
+    recognition.onresult = (event) => {
+      let transcript = "";
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        transcript += event.results[i][0].transcript;
+      }
+      textarea.value = transcript;
+    };
+
+    recognition.onend = () => {
+      recording = false;
+      micBtn.classList.remove("scale-110", "ring-4", "ring-red-400");
+      micStatus.textContent = "✅ تم التسجيل. راجع النص ثم اضغط «ابحث عن الجواب»";
+      if (textarea.value.trim()) {
+        micStatus.textContent += " ←";
+      }
+    };
+
+    recognition.onerror = (event) => {
+      recording = false;
+      micBtn.classList.remove("scale-110", "ring-4", "ring-red-400");
+      if (event.error === "not-allowed") {
+        micStatus.textContent = "⛔ الميكروفون ممنوع — اسمح للمتصفح بالوصول إليه";
+      } else if (event.error === "no-speech") {
+        micStatus.textContent = "لم نسمع كلاماً. حاول مرة أخرى.";
+      } else {
+        micStatus.textContent = "خطأ: " + event.error;
+      }
+    };
+
+  } else if (micBtn) {
+    /* Browser does not support SpeechRecognition */
+    micBtn.disabled = true;
+    micBtn.classList.add("opacity-40", "cursor-not-allowed");
+    micStatus.textContent = "المتصفح ديالك ما يدعمش التسجيل الصوتي — استعمل الكتابة";
+  }
+
+  /* ── SpeechSynthesis (auto-read answer + speak button) ── */
+  const answerTextEl = document.getElementById("answer-text");
+  const speakBtn     = document.getElementById("speak-btn");
+
+  function speakAnswer() {
+    if (!window.speechSynthesis || !answerTextEl) return;
+    window.speechSynthesis.cancel();
+    const utt = new SpeechSynthesisUtterance(answerTextEl.textContent.trim());
+    utt.lang = "ar-MA";
+    utt.rate = 0.9;
+    window.speechSynthesis.speak(utt);
+  }
+
+  if (speakBtn) {
+    speakBtn.addEventListener("click", speakAnswer);
+  }
+
+  /* Auto-read the answer when page loads after a POST */
+  {% if answer %}
+  window.addEventListener("load", () => {
+    setTimeout(speakAnswer, 400);
+  });
+  {% endif %}
+
+})();
+</script>
+{% endblock %}
