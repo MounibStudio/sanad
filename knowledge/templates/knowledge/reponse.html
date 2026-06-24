@@ -1,0 +1,71 @@
+{% extends "core/base.html" %}
+{% block title %}سناد — الجواب{% endblock %}
+
+{% block content %}
+<div class="max-w-xl mx-auto mt-10">
+
+  <!-- Titre -->
+  <h1 class="text-3xl font-bold text-amber-700 mb-6 text-center">
+    🤲 سناد — الجواب
+  </h1>
+
+  <!-- السؤال -->
+  <div class="bg-gray-100 rounded-lg p-4 mb-4 text-right" dir="rtl">
+    <p class="text-gray-500 text-sm mb-1">سؤالك:</p>
+    <p class="text-xl font-bold text-gray-800">{{ question }}</p>
+  </div>
+
+  {% if faq %}
+
+  <!-- الجواب -->
+  <div class="bg-amber-50 border-2 border-amber-400 rounded-lg p-4 mb-4 text-right" dir="rtl">
+    <p class="text-amber-700 font-bold text-lg mb-2">📖 الجواب:</p>
+    <p class="text-gray-800 text-lg leading-relaxed">{{ faq.answer_darija }}</p>
+  </div>
+
+  <!-- المرجع القانوني -->
+  <div class="bg-blue-50 border-2 border-blue-300 rounded-lg p-4 mb-4 text-right" dir="rtl">
+    <p class="text-blue-700 font-bold mb-1">📜 المرجع القانوني:</p>
+    <p class="text-gray-700">{{ faq.legal_reference }}</p>
+  </div>
+
+  <!-- المؤسسات القريبة -->
+  {% if institutions %}
+  <div class="bg-green-50 border-2 border-green-300 rounded-lg p-4 mb-4 text-right" dir="rtl">
+    <p class="text-green-700 font-bold mb-2">🏛️ المؤسسات القريبة:</p>
+    {% for inst in institutions %}
+    <div class="mb-2">
+      <p class="font-bold text-gray-800">{{ inst.name }}</p>
+      <p class="text-gray-600 text-sm">{{ inst.address }}</p>
+      {% if inst.phone %}
+      <p class="text-gray-600 text-sm">📞 {{ inst.phone }}</p>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- التنبيه -->
+  <div class="bg-red-50 border-2 border-red-300 rounded-lg p-4 mb-4 text-right" dir="rtl">
+    <p class="text-red-700 font-bold mb-1">⚠️ تنبيه:</p>
+    <p class="text-gray-700">{{ faq.disclaimer }}</p>
+  </div>
+
+  {% else %}
+
+  <!-- ما لقينا والو -->
+  <div class="bg-gray-100 rounded-lg p-6 text-center">
+    <p class="text-xl text-gray-600">😕 ما لقيناش جواب لهاد السؤال</p>
+    <p class="text-gray-500 mt-2">حاول تكتب بكلمات أخرى</p>
+  </div>
+
+  {% endif %}
+
+  <!-- رجوع -->
+  <a href="{% url 'knowledge:index' %}"
+     class="block text-center mt-6 bg-gray-200 text-gray-700 py-3 rounded-lg hover:bg-gray-300">
+    ← اسأل سؤال آخر
+  </a>
+
+</div>
+{% endblock %}
