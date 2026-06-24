@@ -4,6 +4,6 @@ from . import views
 app_name = 'knowledge'
 
 urlpatterns = [
-    # Dev B: add FAQ search and answer routes here
     path('', views.index, name='index'),
+    path('reponse/', views.reponse, name='reponse'),
 ]
