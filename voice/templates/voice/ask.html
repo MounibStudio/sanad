@@ -1,0 +1,413 @@
+{% extends "core/base.html" %}
+
+{% block title %}سند – اسأل سؤال{% endblock %}
+
+{# ── Apply a11y overrides via the existing base.html hook ── #}
+{% block extra_head %}
+{% if a11y.high_contrast %}
+<style>
+  body   { background-color: #000 !important; color: #fff !important; }
+  header { background-color: #111 !important; }
+  footer { color: #aaa !important; border-color: #444 !important; }
+  .card  { background-color: #1a1a1a !important; border-color: #444 !important; }
+</style>
+{% endif %}
+{% if a11y.font_size == 'large' %}
+<style>body { font-size: 1.375rem !important; }</style>
+{% elif a11y.font_size == 'xlarge' %}
+<style>body { font-size: 1.75rem !important; }</style>
+{% endif %}
+<style>
+  @keyframes mic-pulse {
+    0%, 100% { transform: scale(1);     box-shadow: 0 0 0 0   rgba(220, 38, 38, 0.7); }
+    50%       { transform: scale(1.10);  box-shadow: 0 0 0 18px rgba(220, 38, 38, 0); }
+  }
+  .mic-recording {
+    animation: mic-pulse 1.2s ease-in-out infinite !important;
+    background-color: #dc2626 !important;
+    color: #fff !important;
+  }
+  .mic-unsupported {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+
+{# ── Accessibility bar ── #}
+{% include "accessibility/_settings_bar.html" %}
+
+{# ── Page heading ── #}
+<h1 class="text-3xl font-bold mb-6 {% if a11y.high_contrast %}text-white{% else %}text-green-800{% endif %}">
+  اسأل سؤالك بالدارجة
+</h1>
+
+{# ── Mic section ── #}
+<div class="flex flex-col items-center gap-4 mb-8">
+
+  {# Big mic button #}
+  <button id="mic-btn" type="button"
+    aria-label="اضغط للتسجيل الصوتي"
+    class="w-36 h-36 rounded-full shadow-xl flex items-center justify-center
+           transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-green-400
+           {% if a11y.high_contrast %}bg-yellow-300 text-black hover:bg-yellow-200
+           {% else %}bg-green-700 text-white hover:bg-green-600{% endif %}">
+    <svg id="mic-icon" xmlns="http://www.w3.org/2000/svg"
+         class="w-20 h-20" fill="none" viewBox="0 0 24 24"
+         stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+      <path stroke-linecap="round" stroke-linejoin="round"
+        d="M12 18.75a6 6 0 0 0 6-6v-1.5m-6 7.5a6 6 0 0 1-6-6v-1.5
+           m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 0 1-3-3V4.5a3 3
+           0 1 1 6 0v8.25a3 3 0 0 1-3 3Z"/>
+    </svg>
+  </button>
+
+  <p id="mic-status"
+     role="status" aria-live="polite"
+     class="text-lg font-semibold text-center min-h-[1.5em]
+            {% if a11y.high_contrast %}text-yellow-200{% else %}text-gray-600{% endif %}">
+    اضغط على الميكروفون للتسجيل
+  </p>
+
+</div>
+
+{# ── Question form ── #}
+<form method="post" id="ask-form" class="space-y-4">
+  {% csrf_token %}
+
+  <label for="question_text" class="block font-semibold">
+    أو اكتب سؤالك هنا:
+  </label>
+
+  <textarea
+    id="question_text"
+    name="question_text"
+    rows="3"
+    placeholder="مثلاً: كيفاش نجدد بطاقة الوطنية؟"
+    class="w-full rounded-2xl border p-4 resize-none text-inherit leading-relaxed
+           focus:outline-none focus:ring-2 focus:ring-green-500
+           {% if a11y.high_contrast %}bg-gray-900 border-gray-500 text-white placeholder-gray-400
+           {% else %}border-gray-300 bg-white{% endif %}"
+  >{{ question }}</textarea>
+
+  <button type="submit"
+    class="w-full py-4 rounded-2xl text-xl font-bold shadow-md transition-colors
+           {% if a11y.high_contrast %}bg-yellow-300 text-black hover:bg-yellow-200
+           {% else %}bg-green-700 text-white hover:bg-green-600{% endif %}">
+    ابحث عن الجواب
+  </button>
+</form>
+
+{# ── Answer section ── #}
+{% if answer %}
+<div id="answer-box"
+     class="card mt-8 p-6 rounded-2xl border shadow-md
+            {% if a11y.high_contrast %}bg-gray-900 border-gray-500 text-white
+            {% else %}bg-green-50 border-green-200{% endif %}">
+
+  <div class="flex items-center justify-between mb-3">
+    <h2 class="text-xl font-bold {% if a11y.high_contrast %}text-yellow-300{% else %}text-green-800{% endif %}">
+      الجواب:
+    </h2>
+    <button id="speak-btn" type="button" aria-label="استمع للجواب"
+      class="flex items-center gap-2 px-4 py-2 rounded-xl text-base font-semibold shadow
+             {% if a11y.high_contrast %}bg-yellow-300 text-black hover:bg-yellow-200
+             {% else %}bg-green-700 text-white hover:bg-green-600{% endif %}">
+      <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none"
+           viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+        <path stroke-linecap="round" stroke-linejoin="round"
+          d="M19.114 5.636a9 9 0 0 1 0 12.728M16.463 8.288a5.25 5.25 0 0 1 0
+             7.424M6.75 8.25l4.72-4.72a.75.75 0 0 1 1.28.53v15.88a.75.75 0 0
+             1-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.009
+             9.009 0 0 1 2.25 12c0-.83.112-1.633.322-2.396C2.806 8.756
+             3.63 8.25 4.51 8.25H6.75Z"/>
+      </svg>
+      استمع
+    </button>
+  </div>
+
+  <p id="answer-text" class="leading-loose text-lg">{{ answer }}</p>
+
+  <p id="tts-status" role="alert"
+     class="hidden mt-3 text-sm font-semibold
+            {% if a11y.high_contrast %}text-yellow-300{% else %}text-red-600{% endif %}">
+  </p>
+</div>
+{% endif %}
+
+<div class="mt-6">
+  <a href="{% url 'core:home' %}"
+     class="{% if a11y.high_contrast %}text-yellow-300{% else %}text-green-700{% endif %} underline text-base">
+    ← العودة للرئيسية
+  </a>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+(function () {
+  "use strict";
+
+  /* ── SpeechRecognition (mic button) ── */
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const micBtn    = document.getElementById("mic-btn");
+  const micStatus = document.getElementById("mic-status");
+  const textarea  = document.getElementById("question_text");
+
+  function setMicStatus(msg) {
+    if (micStatus) micStatus.textContent = msg;
+  }
+  function startRecordingUI() {
+    micBtn.classList.add("mic-recording");
+    micBtn.setAttribute("aria-label", "اضغط لإيقاف التسجيل");
+    setMicStatus("كنسمعك… تكلم دابا 🎙");
+  }
+  function stopRecordingUI() {
+    micBtn.classList.remove("mic-recording");
+    micBtn.setAttribute("aria-label", "اضغط للتسجيل الصوتي");
+  }
+
+  if (!SpeechRecognition) {
+    if (micBtn) {
+      micBtn.disabled = true;
+      micBtn.classList.add("mic-unsupported");
+    }
+    setMicStatus("المتصفح ديالك ما كيدعمش التسجيل الصوتي، استعمل الكتابة");
+
+  } else {
+    const recognition          = new SpeechRecognition();
+    recognition.lang           = "ar-SA";   // best-supported Arabic locale in Chrome
+    recognition.continuous     = true;      // don't stop on first pause
+    recognition.interimResults = true;
+
+    /*
+     * userStopped — true means "the session is over" (user clicked stop OR
+     *   auto-silence fired). false means "keep going; restart on onend".
+     * recording   — true only while the engine is actively running.
+     * accumulatedFinal — confirmed transcript pieces joined across restarts.
+     * silenceTimer — auto-stops the session after SILENCE_MS of no new speech.
+     */
+    let userStopped      = true;
+    let recording        = false;
+    let accumulatedFinal = "";
+    let silenceTimer     = null;
+    const SILENCE_MS     = 9000;   // 9 s of no new speech → auto-stop
+
+    function clearSilenceTimer() {
+      clearTimeout(silenceTimer);
+      silenceTimer = null;
+    }
+    function resetSilenceTimer() {
+      clearSilenceTimer();
+      silenceTimer = setTimeout(() => {
+        if (!userStopped) {
+          userStopped = true;
+          recognition.stop();
+          setMicStatus("⏹ توقف التسجيل بسبب الصمت — اضغط للتسجيل من جديد");
+        }
+      }, SILENCE_MS);
+    }
+
+    function startSession() {
+      userStopped      = false;
+      accumulatedFinal = "";
+      textarea.value   = "";
+      try {
+        recognition.start();
+      } catch (e) {
+        console.error("[Sanad ASR] recognition.start() threw:", e);
+        userStopped = true;
+        setMicStatus("وقع مشكل، عاود حاول");
+      }
+    }
+
+    function endSession(msg) {
+      userStopped = true;
+      clearSilenceTimer();
+      stopRecordingUI();
+      recording = false;
+      setMicStatus(msg);
+    }
+
+    micBtn.addEventListener("click", () => {
+      if (!userStopped) {
+        /* User clicks to stop the active session */
+        endSession(
+          textarea.value.trim()
+            ? "✅ سمعتك! راجع النص ثم اضغط «ابحث عن الجواب» ←"
+            : "ما سمعت والو، عاود حاول"
+        );
+        if (recording) recognition.stop();
+      } else {
+        /* Start a fresh session */
+        startSession();
+      }
+    });
+
+    recognition.onstart = () => {
+      recording = true;
+      startRecordingUI();
+      resetSilenceTimer();
+    };
+
+    recognition.onresult = (event) => {
+      let newFinal = "";
+      let interim  = "";
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        if (event.results[i].isFinal) {
+          newFinal += event.results[i][0].transcript;
+        } else {
+          interim  += event.results[i][0].transcript;
+        }
+      }
+      if (newFinal) {
+        accumulatedFinal += newFinal;
+        resetSilenceTimer();   // new confirmed speech — reset countdown
+      }
+      textarea.value = accumulatedFinal + interim;
+      const preview  = (interim || newFinal).slice(0, 40);
+      if (preview) setMicStatus("كنكتب… " + preview);
+    };
+
+    recognition.onend = () => {
+      recording = false;
+      if (userStopped) {
+        /* Clean stop — UI already set by endSession() or silence timer */
+        return;
+      }
+      /*
+       * Chrome fires 'end' on short silences even with continuous=true.
+       * As long as the user hasn't stopped, restart immediately.
+       */
+      setMicStatus("كنسمعك… تكلم دابا 🎙");
+      try {
+        recognition.start();
+      } catch (e) {
+        console.error("[Sanad ASR] auto-restart failed:", e);
+        endSession("وقع مشكل أثناء إعادة التشغيل، عاود حاول");
+      }
+    };
+
+    recognition.onerror = (event) => {
+      switch (event.error) {
+        case "not-allowed":
+        case "permission-denied":
+          endSession("⛔ خاصك تسمح بالميكروفون باش نقدر نسمعك");
+          break;
+        case "audio-capture":
+          endSession("⛔ ما لقيناش ميكروفون — تحقق من التوصيلات");
+          break;
+        case "no-speech":
+          /* Chrome will fire onend next — let the restart loop handle it */
+          setMicStatus("ما سمعت والو، كنحاول من جديد…");
+          break;
+        default:
+          console.error("[Sanad ASR] SpeechRecognition error:", event.error);
+          endSession("وقع مشكل، عاود حاول");
+      }
+    };
+  }
+
+  /* ── SpeechSynthesis (auto-read answer + speak button) ── */
+  const answerTextEl = document.getElementById("answer-text");
+  const speakBtn     = document.getElementById("speak-btn");
+  const ttsStatus    = document.getElementById("tts-status");
+
+  function showTTSMessage(msg) {
+    if (ttsStatus) {
+      ttsStatus.textContent = msg;
+      ttsStatus.classList.remove("hidden");
+    }
+  }
+  function hideTTSMessage() {
+    if (ttsStatus) ttsStatus.classList.add("hidden");
+  }
+
+  /* getVoices() is async — cache on load and on every voiceschanged event. */
+  let _voices = [];
+  function loadVoices() {
+    _voices = window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
+    console.log("[Sanad TTS] voices available:", _voices.length,
+                _voices.map(v => v.lang + " / " + v.name));
+  }
+  if (window.speechSynthesis) {
+    loadVoices();
+    window.speechSynthesis.onvoiceschanged = loadVoices;
+  }
+
+  function pickArabicVoice() {
+    return _voices.find(v => v.lang.startsWith("ar")) || null;
+  }
+
+  function speakAnswer() {
+    if (!window.speechSynthesis || !answerTextEl) return;
+    const text = answerTextEl.textContent.trim();
+    if (!text) return;
+
+    hideTTSMessage();
+
+    /* If the browser has no voices at all, tell the user visibly. */
+    if (_voices.length === 0) {
+      console.error("[Sanad TTS] getVoices() returned 0 voices — TTS unavailable on this device.");
+      showTTSMessage("القراءة الصوتية غير متوفرة على هذا الجهاز");
+      return;
+    }
+
+    window.speechSynthesis.cancel();
+
+    const utt = new SpeechSynthesisUtterance(text);
+    utt.rate  = 0.85;
+    const arVoice = pickArabicVoice();
+    if (arVoice) {
+      utt.voice = arVoice;
+      utt.lang  = arVoice.lang;
+      console.log("[Sanad TTS] using Arabic voice:", arVoice.name, arVoice.lang);
+    } else {
+      console.log("[Sanad TTS] no Arabic voice found — using browser default voice.");
+    }
+
+    if (speakBtn) {
+      const origHTML    = speakBtn.innerHTML;
+      speakBtn.disabled = true;
+      speakBtn.textContent = "🔊 جاري القراءة…";
+      utt.onend  = () => { speakBtn.disabled = false; speakBtn.innerHTML = origHTML; hideTTSMessage(); };
+      utt.onerror = (e) => {
+        console.error("[Sanad TTS] utterance error:", e.error);
+        speakBtn.disabled = false;
+        speakBtn.innerHTML = origHTML;
+        showTTSMessage("خطأ في القراءة الصوتية: " + e.error);
+      };
+    }
+
+    window.speechSynthesis.speak(utt);
+  }
+
+  if (speakBtn) {
+    speakBtn.addEventListener("click", speakAnswer);
+  }
+
+  /* Auto-read after a POST — wait for voices to be ready if needed. */
+  {% if answer %}
+  window.addEventListener("load", () => {
+    if (_voices.length > 0) {
+      setTimeout(speakAnswer, 300);
+    } else {
+      const origChanged = window.speechSynthesis && window.speechSynthesis.onvoiceschanged;
+      if (window.speechSynthesis) {
+        window.speechSynthesis.onvoiceschanged = () => {
+          loadVoices();
+          if (origChanged) origChanged();
+          window.speechSynthesis.onvoiceschanged = origChanged;
+          setTimeout(speakAnswer, 100);
+        };
+      }
+    }
+  });
+  {% endif %}
+
+})();
+</script>
+{% endblock %}

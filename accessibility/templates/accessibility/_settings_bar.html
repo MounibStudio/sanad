@@ -1,0 +1,70 @@
+{% comment %}
+Drop {% include "accessibility/_settings_bar.html" %} inside any {% block content %}.
+Reads {{ a11y }} injected by accessibility.context_processors.a11y_settings.
+No extra view context needed.
+{% endcomment %}
+<div class="flex flex-wrap items-center justify-between gap-3 mb-6 px-4 py-2 rounded-xl text-sm shadow-sm
+  {% if a11y.high_contrast %}bg-gray-900 text-white border border-gray-600
+  {% else %}bg-white border border-gray-200 text-gray-700{% endif %}">
+
+  <span class="font-semibold opacity-80">⚙ إعدادات العرض</span>
+
+  <div class="flex flex-wrap items-center gap-4">
+
+    {# ── Font size quick-switcher ── #}
+    <form method="post" action="{% url 'accessibility:settings' %}" class="flex items-center gap-1">
+      {% csrf_token %}
+      <input type="hidden" name="next"          value="{{ request.get_full_path }}">
+      <input type="hidden" name="high_contrast" value="{% if a11y.high_contrast %}on{% endif %}">
+      <span class="opacity-70 ml-1">حجم الخط:</span>
+
+      {% comment %}normal{% endcomment %}
+      <button type="submit" name="font_size" value="normal"
+        class="px-2 py-0.5 rounded border
+          {% if a11y.font_size == 'normal' %}
+            {% if a11y.high_contrast %}bg-white text-black{% else %}bg-green-700 text-white{% endif %}
+          {% else %}
+            {% if a11y.high_contrast %}border-gray-500 hover:bg-gray-700{% else %}border-gray-300 hover:bg-gray-100{% endif %}
+          {% endif %}">
+        ع
+      </button>
+
+      {% comment %}large{% endcomment %}
+      <button type="submit" name="font_size" value="large"
+        class="px-2 py-0.5 rounded border
+          {% if a11y.font_size == 'large' %}
+            {% if a11y.high_contrast %}bg-white text-black{% else %}bg-green-700 text-white{% endif %}
+          {% else %}
+            {% if a11y.high_contrast %}border-gray-500 hover:bg-gray-700{% else %}border-gray-300 hover:bg-gray-100{% endif %}
+          {% endif %}">
+        ع+
+      </button>
+
+      {% comment %}xlarge{% endcomment %}
+      <button type="submit" name="font_size" value="xlarge"
+        class="px-2 py-0.5 rounded border
+          {% if a11y.font_size == 'xlarge' %}
+            {% if a11y.high_contrast %}bg-white text-black{% else %}bg-green-700 text-white{% endif %}
+          {% else %}
+            {% if a11y.high_contrast %}border-gray-500 hover:bg-gray-700{% else %}border-gray-300 hover:bg-gray-100{% endif %}
+          {% endif %}">
+        ع++
+      </button>
+    </form>
+
+    {# ── High-contrast toggle ── #}
+    <form method="post" action="{% url 'accessibility:settings' %}">
+      {% csrf_token %}
+      <input type="hidden" name="next"      value="{{ request.get_full_path }}">
+      <input type="hidden" name="font_size" value="{{ a11y.font_size }}">
+      <button type="submit" name="high_contrast"
+        value="{% if a11y.high_contrast %}{% else %}on{% endif %}"
+        class="px-3 py-0.5 rounded border font-semibold
+          {% if a11y.high_contrast %}bg-yellow-300 text-black border-yellow-500
+          {% else %}border-gray-300 hover:bg-gray-100{% endif %}">
+        {% if a11y.high_contrast %}تباين عادي{% else %}تباين عالي{% endif %}
+      </button>
+    </form>
+
+  </div>
+</div>
