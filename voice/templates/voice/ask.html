@@ -284,6 +284,20 @@
     };
   }
 
+  /* ── Form submit: always navigate via GET regardless of form method ── */
+  const askForm = document.getElementById("ask-form");
+  if (askForm) {
+    askForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const q = (textarea ? textarea.value : "").trim();
+      if (!q) {
+        if (textarea) textarea.focus();
+        return;
+      }
+      window.location.href = "/knowledge/reponse/?question=" + encodeURIComponent(q);
+    });
+  }
+
 })();
 </script>
 {% endblock %}
