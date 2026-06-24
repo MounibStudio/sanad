@@ -17,6 +17,21 @@
 {% elif a11y.font_size == 'xlarge' %}
 <style>body { font-size: 1.75rem !important; }</style>
 {% endif %}
+<style>
+  @keyframes mic-pulse {
+    0%, 100% { transform: scale(1);     box-shadow: 0 0 0 0   rgba(220, 38, 38, 0.7); }
+    50%       { transform: scale(1.10);  box-shadow: 0 0 0 18px rgba(220, 38, 38, 0); }
+  }
+  .mic-recording {
+    animation: mic-pulse 1.2s ease-in-out infinite !important;
+    background-color: #dc2626 !important;
+    color: #fff !important;
+  }
+  .mic-unsupported {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+</style>
 {% endblock %}
 
 {% block content %}
@@ -49,7 +64,12 @@
     </svg>
   </button>
 
-  <p id="mic-status" class="text-base opacity-70">اضغط على الميكروفون للتسجيل</p>
+  <p id="mic-status"
+     role="status" aria-live="polite"
+     class="text-lg font-semibold text-center min-h-[1.5em]
+            {% if a11y.high_contrast %}text-yellow-200{% else %}text-gray-600{% endif %}">
+    اضغط على الميكروفون للتسجيل
+  </p>
 
 </div>
 
@@ -137,62 +157,103 @@
   const micStatus = document.getElementById("mic-status");
   const textarea  = document.getElementById("question_text");
 
-  if (SpeechRecognition && micBtn) {
-    const recognition = new SpeechRecognition();
+  function setMicStatus(msg) {
+    if (micStatus) micStatus.textContent = msg;
+  }
+
+  function startRecordingUI() {
+    micBtn.classList.add("mic-recording");
+    micBtn.setAttribute("aria-label", "اضغط لإيقاف التسجيل");
+    setMicStatus("كنسمعك… تكلم دابا 🎙");
+  }
+
+  function stopRecordingUI() {
+    micBtn.classList.remove("mic-recording");
+    micBtn.setAttribute("aria-label", "اضغط للتسجيل الصوتي");
+  }
+
+  if (!SpeechRecognition) {
+    /* ── Browser does not support SpeechRecognition at all ── */
+    if (micBtn) {
+      micBtn.disabled = true;
+      micBtn.classList.add("mic-unsupported");
+    }
+    setMicStatus("المتصفح ديالك ما كيدعمش التسجيل الصوتي، استعمل الكتابة");
+
+  } else {
+    const recognition       = new SpeechRecognition();
     recognition.lang        = "ar-MA";
     recognition.continuous  = false;
     recognition.interimResults = true;
 
-    let recording = false;
+    let recording  = false;
+    let hasResult  = false;
 
     micBtn.addEventListener("click", () => {
       if (recording) {
         recognition.stop();
         return;
       }
-      recognition.start();
+      hasResult = false;
+      try {
+        recognition.start();
+      } catch (e) {
+        /* start() throws if already started — ignore the race */
+        console.error("[Sanad ASR] recognition.start() threw:", e);
+      }
     });
 
     recognition.onstart = () => {
       recording = true;
-      micBtn.classList.add("scale-110", "ring-4", "ring-red-400");
-      micStatus.textContent = "🔴 جاري التسجيل… تكلم الآن";
+      startRecordingUI();
     };
 
     recognition.onresult = (event) => {
-      let transcript = "";
+      let interim = "", final = "";
       for (let i = event.resultIndex; i < event.results.length; i++) {
-        transcript += event.results[i][0].transcript;
+        if (event.results[i].isFinal) {
+          final   += event.results[i][0].transcript;
+        } else {
+          interim += event.results[i][0].transcript;
+        }
       }
-      textarea.value = transcript;
+      /* Show interim text live; commit final text to the field */
+      if (final)   { textarea.value = final;   hasResult = true; }
+      if (interim) { textarea.value = interim; }
+      if (interim || final) {
+        setMicStatus("كنكتب… " + (interim || final));
+      }
     };
 
     recognition.onend = () => {
       recording = false;
-      micBtn.classList.remove("scale-110", "ring-4", "ring-red-400");
-      micStatus.textContent = "✅ تم التسجيل. راجع النص ثم اضغط «ابحث عن الجواب»";
+      stopRecordingUI();
       if (textarea.value.trim()) {
-        micStatus.textContent += " ←";
+        setMicStatus("✅ سمعتك! راجع النص ثم اضغط «ابحث عن الجواب» ←");
+      } else {
+        setMicStatus("ما سمعت والو، عاود حاول");
       }
     };
 
     recognition.onerror = (event) => {
       recording = false;
-      micBtn.classList.remove("scale-110", "ring-4", "ring-red-400");
-      if (event.error === "not-allowed") {
-        micStatus.textContent = "⛔ الميكروفون ممنوع — اسمح للمتصفح بالوصول إليه";
-      } else if (event.error === "no-speech") {
-        micStatus.textContent = "لم نسمع كلاماً. حاول مرة أخرى.";
-      } else {
-        micStatus.textContent = "خطأ: " + event.error;
+      stopRecordingUI();
+      switch (event.error) {
+        case "not-allowed":
+        case "permission-denied":
+          setMicStatus("⛔ خاصك تسمح بالميكروفون باش نقدر نسمعك");
+          break;
+        case "no-speech":
+          setMicStatus("ما سمعت والو، عاود حاول");
+          break;
+        case "audio-capture":
+          setMicStatus("⛔ ما لقيناش ميكروفون — تحقق من التوصيلات");
+          break;
+        default:
+          console.error("[Sanad ASR] SpeechRecognition error:", event.error);
+          setMicStatus("وقع مشكل، عاود حاول");
       }
     };
-
-  } else if (micBtn) {
-    /* Browser does not support SpeechRecognition */
-    micBtn.disabled = true;
-    micBtn.classList.add("opacity-40", "cursor-not-allowed");
-    micStatus.textContent = "المتصفح ديالك ما يدعمش التسجيل الصوتي — استعمل الكتابة";
   }
 
   /* ── SpeechSynthesis (auto-read answer + speak button) ── */
