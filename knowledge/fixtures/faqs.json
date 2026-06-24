@@ -1,0 +1,106 @@
+[
+  {
+    "model": "knowledge.faqentry",
+    "pk": 1,
+    "fields": {
+      "question_darija": "Kif ndir bach nجدد CIN dyali?",
+      "keywords": "cin, carte, identité, renouveler, بطاقة",
+      "answer_darija": "Bach tjded CIN dyalek, khassek tmchi l préfecture aw commune dyalek b dossier fih: photo, certificat de résidence, o CIN l'ancienne. L'opération titre 30 dhs.",
+      "legal_reference": "Dahir n° 1-08-214 du 23 décembre 2008 relatif à la carte nationale d'identité",
+      "category": "cin",
+      "disclaimer": "Hada tawjih gha, machi avis juridique officiel.",
+      "created_at": "2025-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "knowledge.faqentry",
+    "pk": 2,
+    "fields": {
+      "question_darija": "Kif ndir bach nجيب copie d'acte de naissance?",
+      "keywords": "naissance, acte, copie, ولادة, شهادة",
+      "answer_darija": "Bach tjib copie d'acte de naissance, tmchi l commune li twildt fiha o ttelb 'copie intégrale'. Khassek t3ref raqm acte o tari5 lwilada. Hiya mjaliya f ghalbiyat l7alat.",
+      "legal_reference": "Dahir n° 1-02-239 du 25 rejeb 1423 relatif à l'état civil",
+      "category": "naissance",
+      "disclaimer": "Hada tawjih gha, machi avis juridique officiel.",
+      "created_at": "2025-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "knowledge.faqentry",
+    "pk": 3,
+    "fields": {
+      "question_darija": "Chno hiya 7quqi f contrat de location?",
+      "keywords": "location, loyer, contrat, كراء, عقد, كيراء",
+      "answer_darija": "F contrat de location, nta ka-y7q lik: tskn b aman, l logement ikoun f 7al mzyan, o l malik ma ydkhol-sh bla ijaztek. L malik 7qo yjib l kira f wa9tho.",
+      "legal_reference": "Loi n° 67-12 du 17 août 2016 régissant les relations entre bailleurs et locataires",
+      "category": "location",
+      "disclaimer": "Hada tawjih gha, machi avis juridique officiel.",
+      "created_at": "2025-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "knowledge.faqentry",
+    "pk": 4,
+    "fields": {
+      "question_darija": "Wash 5assni nmchi l tribunal ila jatni convocation?",
+      "keywords": "tribunal, convocation, استدعاء, محكمة, 7okom",
+      "answer_darija": "Iyeh, lazem tmchi l tribunal f nhar o sa3a li mktoubin f convocation. Ila ma mchitich bla 3odhr ma9boul, momkin i9adro 7kmou 3lik ghyabiya.",
+      "legal_reference": "Code de procédure civile marocain, article 38 et suivants",
+      "category": "tribunal",
+      "disclaimer": "Hada tawjih gha, machi avis juridique officiel.",
+      "created_at": "2025-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "knowledge.faqentry",
+    "pk": 5,
+    "fields": {
+      "question_darija": "Kif ykoun taqsim lirs ba3d mawt chi wa7ed?",
+      "keywords": "héritage, irs, mawt, décès, وراثة, ميراث",
+      "answer_darija": "L irs f lmaghrib kaytqassam 7asab l fiqh l islami o qanoun l usra. Lazem tmchi l mousel7a dyal l9adaa bach tdir 'attestation d'héritage'.",
+      "legal_reference": "Code de la famille marocain (Moudawwana) - Livre VI relatif aux successions",
+      "category": "heritage",
+      "disclaimer": "Hada tawjih gha, machi avis juridique officiel.",
+      "created_at": "2025-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "knowledge.faqentry",
+    "pk": 6,
+    "fields": {
+      "question_darija": "Chno hiya 7quqi f contrat de travail?",
+      "keywords": "travail, contrat, عمل, عقد, patron, salaire",
+      "answer_darija": "F contrat de travail, 7quqak huma: 7d adna dyal l ujra (SMIG), congé annuel (18 yom f l 3am), déclaration l CNSS, o ma ytardach bla sabab wa9il.",
+      "legal_reference": "Code du travail marocain - Loi n° 65-99 du 11 septembre 2003",
+      "category": "travail",
+      "disclaimer": "Hada tawjih gha, machi avis juridique officiel.",
+      "created_at": "2025-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "knowledge.faqentry",
+    "pk": 7,
+    "fields": {
+      "question_darija": "Kif nsjel f CNSS o chno l faida dyalha?",
+      "keywords": "cnss, sécurité sociale, تأمين, صحة, retraite",
+      "answer_darija": "CNSS hiya l caisse nationale de sécurité sociale. Patron dyalek huwa li lazem ysjelek. L faida: tamin s7i, allocation familiale, o pension 3nd t3awod.",
+      "legal_reference": "Dahir n° 1-72-184 du 27 juillet 1972 relatif au régime de sécurité sociale",
+      "category": "cnss",
+      "disclaimer": "Hada tawjih gha, machi avis juridique officiel.",
+      "created_at": "2025-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "knowledge.faqentry",
+    "pk": 8,
+    "fields": {
+      "question_darija": "Kif ndir bach nkhrej shada de résidence?",
+      "keywords": "résidence, shada, سكن, commune, محل الإقامة",
+      "answer_darija": "Bach tjib shada de résidence, tmchi l commune aw moqata3a dyal l 7ay li sakn fiha. Khassek tjib CIN dyalek. Hiya mjaliya o katokhod ghir chi dqaiq.",
+      "legal_reference": "Décret n° 2-99-1053 du 4 mai 2000 relatif aux attestations administratives",
+      "category": "autre",
+      "disclaimer": "Hada tawjih gha, machi avis juridique officiel.",
+      "created_at": "2025-01-01T00:00:00Z"
+    }
+  }
+]
