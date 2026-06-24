@@ -160,20 +160,17 @@
   function setMicStatus(msg) {
     if (micStatus) micStatus.textContent = msg;
   }
-
   function startRecordingUI() {
     micBtn.classList.add("mic-recording");
     micBtn.setAttribute("aria-label", "اضغط لإيقاف التسجيل");
     setMicStatus("كنسمعك… تكلم دابا 🎙");
   }
-
   function stopRecordingUI() {
     micBtn.classList.remove("mic-recording");
     micBtn.setAttribute("aria-label", "اضغط للتسجيل الصوتي");
   }
 
   if (!SpeechRecognition) {
-    /* ── Browser does not support SpeechRecognition at all ── */
     if (micBtn) {
       micBtn.disabled = true;
       micBtn.classList.add("mic-unsupported");
@@ -181,77 +178,135 @@
     setMicStatus("المتصفح ديالك ما كيدعمش التسجيل الصوتي، استعمل الكتابة");
 
   } else {
-    const recognition       = new SpeechRecognition();
-    recognition.lang        = "ar-MA";
-    recognition.continuous  = false;
+    const recognition          = new SpeechRecognition();
+    recognition.lang           = "ar-SA";   // best-supported Arabic locale in Chrome
+    recognition.continuous     = true;      // don't stop on first pause
     recognition.interimResults = true;
 
-    let recording  = false;
-    let hasResult  = false;
+    /*
+     * userStopped — true means "the session is over" (user clicked stop OR
+     *   auto-silence fired). false means "keep going; restart on onend".
+     * recording   — true only while the engine is actively running.
+     * accumulatedFinal — confirmed transcript pieces joined across restarts.
+     * silenceTimer — auto-stops the session after SILENCE_MS of no new speech.
+     */
+    let userStopped      = true;
+    let recording        = false;
+    let accumulatedFinal = "";
+    let silenceTimer     = null;
+    const SILENCE_MS     = 9000;   // 9 s of no new speech → auto-stop
 
-    micBtn.addEventListener("click", () => {
-      if (recording) {
-        recognition.stop();
-        return;
-      }
-      hasResult = false;
+    function clearSilenceTimer() {
+      clearTimeout(silenceTimer);
+      silenceTimer = null;
+    }
+    function resetSilenceTimer() {
+      clearSilenceTimer();
+      silenceTimer = setTimeout(() => {
+        if (!userStopped) {
+          userStopped = true;
+          recognition.stop();
+          setMicStatus("⏹ توقف التسجيل بسبب الصمت — اضغط للتسجيل من جديد");
+        }
+      }, SILENCE_MS);
+    }
+
+    function startSession() {
+      userStopped      = false;
+      accumulatedFinal = "";
+      textarea.value   = "";
       try {
         recognition.start();
       } catch (e) {
-        /* start() throws if already started — ignore the race */
         console.error("[Sanad ASR] recognition.start() threw:", e);
+        userStopped = true;
+        setMicStatus("وقع مشكل، عاود حاول");
+      }
+    }
+
+    function endSession(msg) {
+      userStopped = true;
+      clearSilenceTimer();
+      stopRecordingUI();
+      recording = false;
+      setMicStatus(msg);
+    }
+
+    micBtn.addEventListener("click", () => {
+      if (!userStopped) {
+        /* User clicks to stop the active session */
+        endSession(
+          textarea.value.trim()
+            ? "✅ سمعتك! راجع النص ثم اضغط «ابحث عن الجواب» ←"
+            : "ما سمعت والو، عاود حاول"
+        );
+        if (recording) recognition.stop();
+      } else {
+        /* Start a fresh session */
+        startSession();
       }
     });
 
     recognition.onstart = () => {
       recording = true;
       startRecordingUI();
+      resetSilenceTimer();
     };
 
     recognition.onresult = (event) => {
-      let interim = "", final = "";
+      let newFinal = "";
+      let interim  = "";
       for (let i = event.resultIndex; i < event.results.length; i++) {
         if (event.results[i].isFinal) {
-          final   += event.results[i][0].transcript;
+          newFinal += event.results[i][0].transcript;
         } else {
-          interim += event.results[i][0].transcript;
+          interim  += event.results[i][0].transcript;
         }
       }
-      /* Show interim text live; commit final text to the field */
-      if (final)   { textarea.value = final;   hasResult = true; }
-      if (interim) { textarea.value = interim; }
-      if (interim || final) {
-        setMicStatus("كنكتب… " + (interim || final));
+      if (newFinal) {
+        accumulatedFinal += newFinal;
+        resetSilenceTimer();   // new confirmed speech — reset countdown
       }
+      textarea.value = accumulatedFinal + interim;
+      const preview  = (interim || newFinal).slice(0, 40);
+      if (preview) setMicStatus("كنكتب… " + preview);
     };
 
     recognition.onend = () => {
       recording = false;
-      stopRecordingUI();
-      if (textarea.value.trim()) {
-        setMicStatus("✅ سمعتك! راجع النص ثم اضغط «ابحث عن الجواب» ←");
-      } else {
-        setMicStatus("ما سمعت والو، عاود حاول");
+      if (userStopped) {
+        /* Clean stop — UI already set by endSession() or silence timer */
+        return;
+      }
+      /*
+       * Chrome fires 'end' on short silences even with continuous=true.
+       * As long as the user hasn't stopped, restart immediately.
+       */
+      setMicStatus("كنسمعك… تكلم دابا 🎙");
+      try {
+        recognition.start();
+      } catch (e) {
+        console.error("[Sanad ASR] auto-restart failed:", e);
+        endSession("وقع مشكل أثناء إعادة التشغيل، عاود حاول");
       }
     };
 
     recognition.onerror = (event) => {
-      recording = false;
-      stopRecordingUI();
       switch (event.error) {
         case "not-allowed":
         case "permission-denied":
-          setMicStatus("⛔ خاصك تسمح بالميكروفون باش نقدر نسمعك");
-          break;
-        case "no-speech":
-          setMicStatus("ما سمعت والو، عاود حاول");
+          endSession("⛔ خاصك تسمح بالميكروفون باش نقدر نسمعك");
           break;
         case "audio-capture":
-          setMicStatus("⛔ ما لقيناش ميكروفون — تحقق من التوصيلات");
+          endSession("⛔ ما لقيناش ميكروفون — تحقق من التوصيلات");
+          break;
+        case "no-speech":
+          /* Chrome will fire onend next — let the restart loop handle it */
+          setMicStatus("ما سمعت والو، كنحاول من جديد…");
           break;
         default:
           console.error("[Sanad ASR] SpeechRecognition error:", event.error);
-          setMicStatus("وقع مشكل، عاود حاول");
+          endSession("وقع مشكل، عاود حاول");
       }
     };
   }
