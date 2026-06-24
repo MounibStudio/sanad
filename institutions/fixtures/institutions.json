@@ -1,0 +1,72 @@
+[
+  {
+    "model": "institutions.institution",
+    "pk": 1,
+    "fields": {
+      "name": "Préfecture de Casablanca",
+      "institution_type": "prefecture",
+      "city": "Casablanca",
+      "address": "Boulevard Mohammed V, Casablanca",
+      "latitude": 33.5731,
+      "longitude": -7.5898,
+      "topics": "cin, passeport, résidence, naissance",
+      "phone": "0522-271-271"
+    }
+  },
+  {
+    "model": "institutions.institution",
+    "pk": 2,
+    "fields": {
+      "name": "Tribunal de Première Instance de Casablanca",
+      "institution_type": "tribunal",
+      "city": "Casablanca",
+      "address": "Rue du Tribunal, Casablanca",
+      "latitude": 33.5900,
+      "longitude": -7.6100,
+      "topics": "tribunal, heritage, divorce, contrat",
+      "phone": "0522-261-261"
+    }
+  },
+  {
+    "model": "institutions.institution",
+    "pk": 3,
+    "fields": {
+      "name": "CNSS Casablanca Centre",
+      "institution_type": "cnss",
+      "city": "Casablanca",
+      "address": "Rue Moulay Youssef, Casablanca",
+      "latitude": 33.5850,
+      "longitude": -7.6200,
+      "topics": "cnss, travail, retraite, sécurité sociale",
+      "phone": "0801-005-005"
+    }
+  },
+  {
+    "model": "institutions.institution",
+    "pk": 4,
+    "fields": {
+      "name": "Inspection du Travail Casablanca",
+      "institution_type": "inspection",
+      "city": "Casablanca",
+      "address": "Avenue des FAR, Casablanca",
+      "latitude": 33.5920,
+      "longitude": -7.6050,
+      "topics": "travail, contrat, licenciement, salaire",
+      "phone": "0522-311-311"
+    }
+  },
+  {
+    "model": "institutions.institution",
+    "pk": 5,
+    "fields": {
+      "name": "Commune de Hay Mohammadi",
+      "institution_type": "commune",
+      "city": "Casablanca",
+      "address": "Hay Mohammadi, Casablanca",
+      "latitude": 33.5650,
+      "longitude": -7.5750,
+      "topics": "résidence, naissance, cin, commune",
+      "phone": "0522-351-351"
+    }
+  }
+]
