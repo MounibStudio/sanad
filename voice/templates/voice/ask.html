@@ -109,6 +109,11 @@
   </div>
 
   <p id="answer-text" class="leading-loose text-lg">{{ answer }}</p>
+
+  <p id="tts-status" role="alert"
+     class="hidden mt-3 text-sm font-semibold
+            {% if a11y.high_contrast %}text-yellow-300{% else %}text-red-600{% endif %}">
+  </p>
 </div>
 {% endif %}
 
@@ -193,11 +198,24 @@
   /* ── SpeechSynthesis (auto-read answer + speak button) ── */
   const answerTextEl = document.getElementById("answer-text");
   const speakBtn     = document.getElementById("speak-btn");
+  const ttsStatus    = document.getElementById("tts-status");
 
-  /* getVoices() is async — resolve once they are loaded, then cache. */
+  function showTTSMessage(msg) {
+    if (ttsStatus) {
+      ttsStatus.textContent = msg;
+      ttsStatus.classList.remove("hidden");
+    }
+  }
+  function hideTTSMessage() {
+    if (ttsStatus) ttsStatus.classList.add("hidden");
+  }
+
+  /* getVoices() is async — cache on load and on every voiceschanged event. */
   let _voices = [];
   function loadVoices() {
     _voices = window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
+    console.log("[Sanad TTS] voices available:", _voices.length,
+                _voices.map(v => v.lang + " / " + v.name));
   }
   if (window.speechSynthesis) {
     loadVoices();
@@ -205,7 +223,6 @@
   }
 
   function pickArabicVoice() {
-    /* Prefer any voice whose lang starts with "ar"; fall back to default. */
     return _voices.find(v => v.lang.startsWith("ar")) || null;
   }
 
@@ -214,24 +231,39 @@
     const text = answerTextEl.textContent.trim();
     if (!text) return;
 
+    hideTTSMessage();
+
+    /* If the browser has no voices at all, tell the user visibly. */
+    if (_voices.length === 0) {
+      console.error("[Sanad TTS] getVoices() returned 0 voices — TTS unavailable on this device.");
+      showTTSMessage("القراءة الصوتية غير متوفرة على هذا الجهاز");
+      return;
+    }
+
     window.speechSynthesis.cancel();
 
-    const utt  = new SpeechSynthesisUtterance(text);
-    utt.rate   = 0.85;
+    const utt = new SpeechSynthesisUtterance(text);
+    utt.rate  = 0.85;
     const arVoice = pickArabicVoice();
     if (arVoice) {
       utt.voice = arVoice;
       utt.lang  = arVoice.lang;
+      console.log("[Sanad TTS] using Arabic voice:", arVoice.name, arVoice.lang);
+    } else {
+      console.log("[Sanad TTS] no Arabic voice found — using browser default voice.");
     }
-    /* If no Arabic voice is installed, omit lang so the browser uses its
-       default voice rather than silently doing nothing. */
 
     if (speakBtn) {
-      const origHTML = speakBtn.innerHTML;
-      speakBtn.disabled   = true;
+      const origHTML    = speakBtn.innerHTML;
+      speakBtn.disabled = true;
       speakBtn.textContent = "🔊 جاري القراءة…";
-      utt.onend  = () => { speakBtn.disabled = false; speakBtn.innerHTML = origHTML; };
-      utt.onerror = () => { speakBtn.disabled = false; speakBtn.innerHTML = origHTML; };
+      utt.onend  = () => { speakBtn.disabled = false; speakBtn.innerHTML = origHTML; hideTTSMessage(); };
+      utt.onerror = (e) => {
+        console.error("[Sanad TTS] utterance error:", e.error);
+        speakBtn.disabled = false;
+        speakBtn.innerHTML = origHTML;
+        showTTSMessage("خطأ في القراءة الصوتية: " + e.error);
+      };
     }
 
     window.speechSynthesis.speak(utt);
@@ -241,20 +273,21 @@
     speakBtn.addEventListener("click", speakAnswer);
   }
 
-  /* Auto-read after a POST — wait long enough for voices to be ready. */
+  /* Auto-read after a POST — wait for voices to be ready if needed. */
   {% if answer %}
   window.addEventListener("load", () => {
     if (_voices.length > 0) {
       setTimeout(speakAnswer, 300);
     } else {
-      /* Voices not ready yet — wait for onvoiceschanged then speak once. */
-      const origChanged = window.speechSynthesis.onvoiceschanged;
-      window.speechSynthesis.onvoiceschanged = () => {
-        loadVoices();
-        if (origChanged) origChanged();
-        window.speechSynthesis.onvoiceschanged = origChanged;
-        setTimeout(speakAnswer, 100);
-      };
+      const origChanged = window.speechSynthesis && window.speechSynthesis.onvoiceschanged;
+      if (window.speechSynthesis) {
+        window.speechSynthesis.onvoiceschanged = () => {
+          loadVoices();
+          if (origChanged) origChanged();
+          window.speechSynthesis.onvoiceschanged = origChanged;
+          setTimeout(speakAnswer, 100);
+        };
+      }
     }
   });
   {% endif %}
