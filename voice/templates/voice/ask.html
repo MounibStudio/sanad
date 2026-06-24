@@ -194,12 +194,46 @@
   const answerTextEl = document.getElementById("answer-text");
   const speakBtn     = document.getElementById("speak-btn");
 
+  /* getVoices() is async — resolve once they are loaded, then cache. */
+  let _voices = [];
+  function loadVoices() {
+    _voices = window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
+  }
+  if (window.speechSynthesis) {
+    loadVoices();
+    window.speechSynthesis.onvoiceschanged = loadVoices;
+  }
+
+  function pickArabicVoice() {
+    /* Prefer any voice whose lang starts with "ar"; fall back to default. */
+    return _voices.find(v => v.lang.startsWith("ar")) || null;
+  }
+
   function speakAnswer() {
     if (!window.speechSynthesis || !answerTextEl) return;
+    const text = answerTextEl.textContent.trim();
+    if (!text) return;
+
     window.speechSynthesis.cancel();
-    const utt = new SpeechSynthesisUtterance(answerTextEl.textContent.trim());
-    utt.lang = "ar-MA";
-    utt.rate = 0.9;
+
+    const utt  = new SpeechSynthesisUtterance(text);
+    utt.rate   = 0.85;
+    const arVoice = pickArabicVoice();
+    if (arVoice) {
+      utt.voice = arVoice;
+      utt.lang  = arVoice.lang;
+    }
+    /* If no Arabic voice is installed, omit lang so the browser uses its
+       default voice rather than silently doing nothing. */
+
+    if (speakBtn) {
+      const origHTML = speakBtn.innerHTML;
+      speakBtn.disabled   = true;
+      speakBtn.textContent = "🔊 جاري القراءة…";
+      utt.onend  = () => { speakBtn.disabled = false; speakBtn.innerHTML = origHTML; };
+      utt.onerror = () => { speakBtn.disabled = false; speakBtn.innerHTML = origHTML; };
+    }
+
     window.speechSynthesis.speak(utt);
   }
 
@@ -207,10 +241,21 @@
     speakBtn.addEventListener("click", speakAnswer);
   }
 
-  /* Auto-read the answer when page loads after a POST */
+  /* Auto-read after a POST — wait long enough for voices to be ready. */
   {% if answer %}
   window.addEventListener("load", () => {
-    setTimeout(speakAnswer, 400);
+    if (_voices.length > 0) {
+      setTimeout(speakAnswer, 300);
+    } else {
+      /* Voices not ready yet — wait for onvoiceschanged then speak once. */
+      const origChanged = window.speechSynthesis.onvoiceschanged;
+      window.speechSynthesis.onvoiceschanged = () => {
+        loadVoices();
+        if (origChanged) origChanged();
+        window.speechSynthesis.onvoiceschanged = origChanged;
+        setTimeout(speakAnswer, 100);
+      };
+    }
   });
   {% endif %}
 
