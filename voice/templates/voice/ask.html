@@ -394,21 +394,20 @@
         const doc  = new DOMParser().parseFromString(html, "text/html");
 
         /*
-         * Dev B's reponse.html answer box:
-         *   <div class="bg-amber-50 border-2 border-amber-400 …">
-         *     <p>📖 الجواب:</p>
-         *     <p class="text-gray-800 …">answer text</p>
-         *   </div>
-         * Note: bg-amber-50 also appears on <body> — use border-amber-400 (unique).
+         * Primary:  #tts-answer — id Dev B added to the answer <p>.
+         * Fallback: .border-amber-400 box (extract second <p>).
          */
-        const answerBox = doc.querySelector(".border-amber-400");
-        if (answerBox) {
-          const paras  = answerBox.querySelectorAll("p");
-          /* First <p> is the "📖 الجواب:" label; second is the Darija answer. */
-          const answer = (paras[1] || paras[0])?.textContent.trim();
-          if (answerTextEl) answerTextEl.textContent = answer || "ما فهمناش الجواب، عاود حاول.";
-        } else {
-          if (answerTextEl) answerTextEl.textContent = "ما لقيناش جواب لهاد السؤال. حاول بكلمات أخرى.";
+        const byId  = doc.querySelector("#tts-answer");
+        const byBox = !byId ? doc.querySelector(".border-amber-400") : null;
+        let answer  = null;
+        if (byId) {
+          answer = byId.textContent.trim();
+        } else if (byBox) {
+          const paras = byBox.querySelectorAll("p");
+          answer = (paras[1] || paras[0])?.textContent.trim() || null;
+        }
+        if (answerTextEl) {
+          answerTextEl.textContent = answer || "ما لقيناش جواب لهاد السؤال. حاول بكلمات أخرى.";
         }
 
         /* Auto-speak — wait for voices if not ready yet */
