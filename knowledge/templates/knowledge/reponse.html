@@ -9,25 +9,51 @@
     🤲 سناد — الجواب
   </h1>
 
+  <!-- Formulaire de recherche -->
+  <div class="mb-6">
+    <form method="GET" action="{% url 'knowledge:reponse' %}">
+      <div class="flex gap-2">
+        <input
+          type="text"
+          name="question"
+          value="{{ question|default:'' }}"
+          placeholder="كتب سؤالك هنا بالدارجة..."
+          class="flex-1 border-2 border-amber-400 rounded-lg p-3 text-lg text-right"
+          dir="rtl"
+        />
+        <button
+          type="submit"
+          class="bg-amber-600 text-white font-bold px-6 py-3 rounded-lg hover:bg-amber-700"
+        >
+          🔍
+        </button>
+      </div>
+    </form>
+  </div>
+
   <!-- السؤال -->
+  {% if question %}
   <div class="bg-gray-100 rounded-lg p-4 mb-4 text-right" dir="rtl">
     <p class="text-gray-500 text-sm mb-1">سؤالك:</p>
     <p class="text-xl font-bold text-gray-800">{{ question }}</p>
   </div>
+  {% endif %}
 
-  {% if faq %}
+  {% if answer_darija %}
 
   <!-- الجواب -->
-  <div class="bg-amber-50 border-2 border-amber-400 rounded-lg p-4 mb-4 text-right" dir="rtl">
+  <div class="bg-amber-50 border-2 border-amber-400 rounded-lg p-4 mb-4 text-right" dir="{{ text_dir|default:'rtl' }}" lang="{{ text_lang|default:'ar' }}">
     <p class="text-amber-700 font-bold text-lg mb-2">📖 الجواب:</p>
-    <p class="text-gray-800 text-lg leading-relaxed">{{ faq.answer_darija }}</p>
+    <p class="text-gray-800 text-lg leading-relaxed" id="tts-answer">{{ answer_darija }}</p>
   </div>
 
   <!-- المرجع القانوني -->
+  {% if legal_reference %}
   <div class="bg-blue-50 border-2 border-blue-300 rounded-lg p-4 mb-4 text-right" dir="rtl">
     <p class="text-blue-700 font-bold mb-1">📜 المرجع القانوني:</p>
-    <p class="text-gray-700">{{ faq.legal_reference }}</p>
+    <p class="text-gray-700">{{ legal_reference }}</p>
   </div>
+  {% endif %}
 
   <!-- المؤسسات القريبة -->
   {% if institutions %}
@@ -46,17 +72,26 @@
   {% endif %}
 
   <!-- التنبيه -->
+  {% if disclaimer %}
   <div class="bg-red-50 border-2 border-red-300 rounded-lg p-4 mb-4 text-right" dir="rtl">
     <p class="text-red-700 font-bold mb-1">⚠️ تنبيه:</p>
-    <p class="text-gray-700">{{ faq.disclaimer }}</p>
+    <p class="text-gray-700">{{ disclaimer }}</p>
   </div>
+  {% endif %}
 
-  {% else %}
+  {% elif no_match %}
 
   <!-- ما لقينا والو -->
   <div class="bg-gray-100 rounded-lg p-6 text-center">
     <p class="text-xl text-gray-600">😕 ما لقيناش جواب لهاد السؤال</p>
     <p class="text-gray-500 mt-2">حاول تكتب بكلمات أخرى</p>
+  </div>
+
+  {% else %}
+
+  <!-- الصفحة الرئيسية بدون سؤال -->
+  <div class="bg-blue-50 border border-blue-200 text-blue-700 p-6 rounded-lg text-center font-medium" dir="rtl">
+    مرحباً بك! اكتب سؤالك في الخانة أعلاه باللغة العربية أو بالـ Arabizi للحصول على الإجابة.
   </div>
 
   {% endif %}
