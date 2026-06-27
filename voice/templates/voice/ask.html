@@ -73,24 +73,23 @@
 
 </div>
 
-{# ── Question form ── #}
-<form method="post" id="ask-form" class="space-y-4">
-  {% csrf_token %}
+{# ── Question form — GET to Dev B's response page ── #}
+<form method="get" action="{% url 'knowledge:reponse' %}" id="ask-form" class="space-y-4">
 
-  <label for="question_text" class="block font-semibold">
+  <label for="question" class="block font-semibold">
     أو اكتب سؤالك هنا:
   </label>
 
   <textarea
-    id="question_text"
-    name="question_text"
+    id="question"
+    name="question"
     rows="3"
     placeholder="مثلاً: كيفاش نجدد بطاقة الوطنية؟"
     class="w-full rounded-2xl border p-4 resize-none text-inherit leading-relaxed
            focus:outline-none focus:ring-2 focus:ring-green-500
            {% if a11y.high_contrast %}bg-gray-900 border-gray-500 text-white placeholder-gray-400
            {% else %}border-gray-300 bg-white{% endif %}"
-  >{{ question }}</textarea>
+  ></textarea>
 
   <button type="submit"
     class="w-full py-4 rounded-2xl text-xl font-bold shadow-md transition-colors
@@ -100,9 +99,8 @@
   </button>
 </form>
 
-{# ── Answer section ── #}
-{% if answer %}
-<div id="answer-box"
+{# ── Answer section (hidden until fetch returns) ── #}
+<div id="answer-section" hidden
      class="card mt-8 p-6 rounded-2xl border shadow-md
             {% if a11y.high_contrast %}bg-gray-900 border-gray-500 text-white
             {% else %}bg-green-50 border-green-200{% endif %}">
@@ -128,14 +126,13 @@
     </button>
   </div>
 
-  <p id="answer-text" class="leading-loose text-lg">{{ answer }}</p>
+  <p id="answer-text" class="leading-loose text-lg" dir="rtl"></p>
 
   <p id="tts-status" role="alert"
      class="hidden mt-3 text-sm font-semibold
             {% if a11y.high_contrast %}text-yellow-300{% else %}text-red-600{% endif %}">
   </p>
 </div>
-{% endif %}
 
 <div class="mt-6">
   <a href="{% url 'core:home' %}"
@@ -155,7 +152,7 @@
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   const micBtn    = document.getElementById("mic-btn");
   const micStatus = document.getElementById("mic-status");
-  const textarea  = document.getElementById("question_text");
+  const textarea  = document.getElementById("question");
 
   function setMicStatus(msg) {
     if (micStatus) micStatus.textContent = msg;
@@ -179,22 +176,22 @@
 
   } else {
     const recognition          = new SpeechRecognition();
-    recognition.lang           = "ar-SA";   // best-supported Arabic locale in Chrome
-    recognition.continuous     = true;      // don't stop on first pause
+    recognition.lang           = "ar-SA";
+    recognition.continuous     = true;
     recognition.interimResults = true;
 
     /*
-     * userStopped — true means "the session is over" (user clicked stop OR
-     *   auto-silence fired). false means "keep going; restart on onend".
-     * recording   — true only while the engine is actively running.
-     * accumulatedFinal — confirmed transcript pieces joined across restarts.
-     * silenceTimer — auto-stops the session after SILENCE_MS of no new speech.
+     * userStopped    — session gate. true = no active session.
+     * isRecognizing  — true only between 'start' and 'end' engine events.
+     *                  The only correct guard before calling recognition.start().
+     * accumulatedFinal — confirmed segments joined across auto-restarts.
+     * silenceTimer   — ends the session after SILENCE_MS of no new speech.
      */
     let userStopped      = true;
-    let recording        = false;
+    let isRecognizing    = false;
     let accumulatedFinal = "";
     let silenceTimer     = null;
-    const SILENCE_MS     = 9000;   // 9 s of no new speech → auto-stop
+    const SILENCE_MS     = 9000;
 
     function clearSilenceTimer() {
       clearTimeout(silenceTimer);
@@ -205,50 +202,62 @@
       silenceTimer = setTimeout(() => {
         if (!userStopped) {
           userStopped = true;
-          recognition.stop();
+          stopRecordingUI();
           setMicStatus("⏹ توقف التسجيل بسبب الصمت — اضغط للتسجيل من جديد");
+          if (isRecognizing) try { recognition.stop(); } catch (_) {}
         }
       }, SILENCE_MS);
+    }
+
+    /* Only entry-point for recognition.start() — guards the InvalidStateError. */
+    function safeStart() {
+      if (isRecognizing) {
+        console.warn("[Sanad ASR] safeStart() skipped — engine still running");
+        return;
+      }
+      try {
+        recognition.start();
+      } catch (e) {
+        if (e.name === "InvalidStateError") {
+          /* Previous session not fully torn down yet — retry after teardown. */
+          console.warn("[Sanad ASR] InvalidStateError on start(), will retry in 300 ms");
+          setTimeout(() => { if (!userStopped) safeStart(); }, 300);
+        } else {
+          console.error("[Sanad ASR] recognition.start() threw:", e);
+          endSession("وقع مشكل، عاود حاول");
+        }
+      }
     }
 
     function startSession() {
       userStopped      = false;
       accumulatedFinal = "";
       textarea.value   = "";
-      try {
-        recognition.start();
-      } catch (e) {
-        console.error("[Sanad ASR] recognition.start() threw:", e);
-        userStopped = true;
-        setMicStatus("وقع مشكل، عاود حاول");
-      }
+      safeStart();
     }
 
     function endSession(msg) {
       userStopped = true;
       clearSilenceTimer();
       stopRecordingUI();
-      recording = false;
       setMicStatus(msg);
+      if (isRecognizing) try { recognition.stop(); } catch (_) {}
     }
 
     micBtn.addEventListener("click", () => {
       if (!userStopped) {
-        /* User clicks to stop the active session */
         endSession(
           textarea.value.trim()
             ? "✅ سمعتك! راجع النص ثم اضغط «ابحث عن الجواب» ←"
             : "ما سمعت والو، عاود حاول"
         );
-        if (recording) recognition.stop();
       } else {
-        /* Start a fresh session */
         startSession();
       }
     });
 
     recognition.onstart = () => {
-      recording = true;
+      isRecognizing = true;
       startRecordingUI();
       resetSilenceTimer();
     };
@@ -265,148 +274,161 @@
       }
       if (newFinal) {
         accumulatedFinal += newFinal;
-        resetSilenceTimer();   // new confirmed speech — reset countdown
+        resetSilenceTimer();
       }
+      /* Always write both accumulated final + live interim to the field. */
       textarea.value = accumulatedFinal + interim;
       const preview  = (interim || newFinal).slice(0, 40);
       if (preview) setMicStatus("كنكتب… " + preview);
     };
 
     recognition.onend = () => {
-      recording = false;
-      if (userStopped) {
-        /* Clean stop — UI already set by endSession() or silence timer */
-        return;
-      }
+      isRecognizing = false;          // engine fully stopped — safe to restart
+      if (userStopped) return;        // clean stop; status already set
       /*
-       * Chrome fires 'end' on short silences even with continuous=true.
-       * As long as the user hasn't stopped, restart immediately.
+       * Chrome fires 'end' on short pauses even with continuous=true.
+       * Wait 250 ms so the previous session tears down completely,
+       * then restart if the user hasn't stopped in the meantime.
        */
       setMicStatus("كنسمعك… تكلم دابا 🎙");
-      try {
-        recognition.start();
-      } catch (e) {
-        console.error("[Sanad ASR] auto-restart failed:", e);
-        endSession("وقع مشكل أثناء إعادة التشغيل، عاود حاول");
-      }
+      setTimeout(() => {
+        if (!userStopped) safeStart();
+      }, 250);
     };
 
     recognition.onerror = (event) => {
       switch (event.error) {
         case "not-allowed":
         case "permission-denied":
+          isRecognizing = false;
           endSession("⛔ خاصك تسمح بالميكروفون باش نقدر نسمعك");
           break;
         case "audio-capture":
+          isRecognizing = false;
           endSession("⛔ ما لقيناش ميكروفون — تحقق من التوصيلات");
           break;
         case "no-speech":
-          /* Chrome will fire onend next — let the restart loop handle it */
+          /* onend fires right after — restart loop takes over. */
           setMicStatus("ما سمعت والو، كنحاول من جديد…");
           break;
         default:
           console.error("[Sanad ASR] SpeechRecognition error:", event.error);
+          isRecognizing = false;
           endSession("وقع مشكل، عاود حاول");
       }
     };
   }
 
-  /* ── SpeechSynthesis (auto-read answer + speak button) ── */
-  const answerTextEl = document.getElementById("answer-text");
-  const speakBtn     = document.getElementById("speak-btn");
-  const ttsStatus    = document.getElementById("tts-status");
+  /* ── TTS (speak button + auto-speak after fetch) ── */
+  const answerSection = document.getElementById("answer-section");
+  const answerTextEl  = document.getElementById("answer-text");
+  const speakBtn      = document.getElementById("speak-btn");
+  const ttsStatus     = document.getElementById("tts-status");
 
-  function showTTSMessage(msg) {
-    if (ttsStatus) {
-      ttsStatus.textContent = msg;
-      ttsStatus.classList.remove("hidden");
-    }
+  function showTTSMsg(msg) {
+    if (ttsStatus) { ttsStatus.textContent = msg; ttsStatus.classList.remove("hidden"); }
   }
-  function hideTTSMessage() {
+  function hideTTSMsg() {
     if (ttsStatus) ttsStatus.classList.add("hidden");
   }
 
-  /* getVoices() is async — cache on load and on every voiceschanged event. */
   let _voices = [];
   function loadVoices() {
     _voices = window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
-    console.log("[Sanad TTS] voices available:", _voices.length,
-                _voices.map(v => v.lang + " / " + v.name));
+    console.log("[Sanad TTS] voices:", _voices.length, _voices.map(v => v.lang + "/" + v.name));
   }
   if (window.speechSynthesis) {
     loadVoices();
     window.speechSynthesis.onvoiceschanged = loadVoices;
   }
 
-  function pickArabicVoice() {
-    return _voices.find(v => v.lang.startsWith("ar")) || null;
-  }
-
   function speakAnswer() {
     if (!window.speechSynthesis || !answerTextEl) return;
     const text = answerTextEl.textContent.trim();
-    if (!text) return;
-
-    hideTTSMessage();
-
-    /* If the browser has no voices at all, tell the user visibly. */
+    if (!text || text === "جاري البحث…") return;
+    hideTTSMsg();
     if (_voices.length === 0) {
-      console.error("[Sanad TTS] getVoices() returned 0 voices — TTS unavailable on this device.");
-      showTTSMessage("القراءة الصوتية غير متوفرة على هذا الجهاز");
+      console.error("[Sanad TTS] no voices available");
+      showTTSMsg("القراءة الصوتية غير متوفرة على هذا الجهاز");
       return;
     }
-
     window.speechSynthesis.cancel();
-
-    const utt = new SpeechSynthesisUtterance(text);
-    utt.rate  = 0.85;
-    const arVoice = pickArabicVoice();
-    if (arVoice) {
-      utt.voice = arVoice;
-      utt.lang  = arVoice.lang;
-      console.log("[Sanad TTS] using Arabic voice:", arVoice.name, arVoice.lang);
-    } else {
-      console.log("[Sanad TTS] no Arabic voice found — using browser default voice.");
-    }
-
+    const utt   = new SpeechSynthesisUtterance(text);
+    utt.rate    = 0.85;
+    const arVoice = _voices.find(v => v.lang.startsWith("ar")) || null;
+    if (arVoice) { utt.voice = arVoice; utt.lang = arVoice.lang; }
     if (speakBtn) {
-      const origHTML    = speakBtn.innerHTML;
+      const orig        = speakBtn.innerHTML;
       speakBtn.disabled = true;
       speakBtn.textContent = "🔊 جاري القراءة…";
-      utt.onend  = () => { speakBtn.disabled = false; speakBtn.innerHTML = origHTML; hideTTSMessage(); };
+      utt.onend  = () => { speakBtn.disabled = false; speakBtn.innerHTML = orig; hideTTSMsg(); };
       utt.onerror = (e) => {
-        console.error("[Sanad TTS] utterance error:", e.error);
-        speakBtn.disabled = false;
-        speakBtn.innerHTML = origHTML;
-        showTTSMessage("خطأ في القراءة الصوتية: " + e.error);
+        console.error("[Sanad TTS] error:", e.error);
+        speakBtn.disabled = false; speakBtn.innerHTML = orig;
+        showTTSMsg("خطأ في القراءة: " + e.error);
       };
     }
-
     window.speechSynthesis.speak(utt);
   }
 
-  if (speakBtn) {
-    speakBtn.addEventListener("click", speakAnswer);
-  }
+  if (speakBtn) speakBtn.addEventListener("click", speakAnswer);
 
-  /* Auto-read after a POST — wait for voices to be ready if needed. */
-  {% if answer %}
-  window.addEventListener("load", () => {
-    if (_voices.length > 0) {
-      setTimeout(speakAnswer, 300);
-    } else {
-      const origChanged = window.speechSynthesis && window.speechSynthesis.onvoiceschanged;
-      if (window.speechSynthesis) {
-        window.speechSynthesis.onvoiceschanged = () => {
-          loadVoices();
-          if (origChanged) origChanged();
-          window.speechSynthesis.onvoiceschanged = origChanged;
-          setTimeout(speakAnswer, 100);
-        };
+  /* ── Form submit: fetch answer from knowledge, display inline ── */
+  const askForm = document.getElementById("ask-form");
+  if (askForm) {
+    askForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const q = (textarea ? textarea.value : "").trim();
+      if (!q) { if (textarea) textarea.focus(); return; }
+
+      /* Show answer box with loading state */
+      if (answerSection) answerSection.removeAttribute("hidden");
+      if (answerTextEl)  answerTextEl.textContent = "جاري البحث…";
+      hideTTSMsg();
+
+      try {
+        const url  = "/knowledge/reponse/?question=" + encodeURIComponent(q);
+        const resp = await fetch(url);
+        if (!resp.ok) throw new Error("HTTP " + resp.status);
+        const html = await resp.text();
+        const doc  = new DOMParser().parseFromString(html, "text/html");
+
+        /*
+         * Primary:  #tts-answer — id Dev B added to the answer <p>.
+         * Fallback: .border-amber-400 box (extract second <p>).
+         */
+        const byId  = doc.querySelector("#tts-answer");
+        const byBox = !byId ? doc.querySelector(".border-amber-400") : null;
+        let answer  = null;
+        if (byId) {
+          answer = byId.textContent.trim();
+        } else if (byBox) {
+          const paras = byBox.querySelectorAll("p");
+          answer = (paras[1] || paras[0])?.textContent.trim() || null;
+        }
+        if (answerTextEl) {
+          answerTextEl.textContent = answer || "ما لقيناش جواب لهاد السؤال. حاول بكلمات أخرى.";
+        }
+
+        /* Auto-speak — wait for voices if not ready yet */
+        if (_voices.length > 0) {
+          setTimeout(speakAnswer, 300);
+        } else if (window.speechSynthesis) {
+          const prev = window.speechSynthesis.onvoiceschanged;
+          window.speechSynthesis.onvoiceschanged = () => {
+            loadVoices();
+            if (prev) prev();
+            window.speechSynthesis.onvoiceschanged = prev;
+            setTimeout(speakAnswer, 100);
+          };
+        }
+
+      } catch (err) {
+        console.error("[Sanad] fetch error:", err);
+        if (answerTextEl) answerTextEl.textContent = "وقع مشكل في الاتصال. عاود حاول.";
       }
-    }
-  });
-  {% endif %}
+    });
+  }
 
 })();
 </script>

@@ -26,3 +26,4 @@ local_settings.py
 # OS
 .DS_Store
 Thumbs.db
+legal_docs/
