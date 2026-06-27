@@ -1,49 +1,46 @@
 from django.shortcuts import render
-from .services import MockNLUService
+from .services import GeminiNLUService
 from institutions.services import MockGeoService
 
 
 def index(request):
-    """
-    Page principale — affiche le formulaire de question.
-    """
-    return render(request, 'knowledge/index.html')
+    """Page d'accueil avec formulaire de question."""
+    return render(request, 'knowledge/reponse.html', {})
 
 
 def reponse(request):
-    """
-    Page réponse — reçoit la question, cherche la FAQ
-    et les institutions proches, affiche le résultat.
-    """
-
-    # 1. Récupérer la question posée par l'utilisateur
     question = request.GET.get('question', '').strip()
 
     if not question:
-        return render(request, 'knowledge/index.html', {
-            'erreur': 'Kteb su2al men fadlek'
-        })
+        return render(request, 'knowledge/reponse.html', {})
 
-    # 2. Utiliser le NLU pour trouver la bonne FAQ
-    nlu = MockNLUService()
-    faq = nlu.match(question)
+    # Utiliser Gemini NLU (Groq)
+    nlu_service = GeminiNLUService()
+    result = nlu_service.match(question)
 
-    # 3. Si aucune FAQ trouvée
-    if not faq:
+    if not result:
         return render(request, 'knowledge/reponse.html', {
             'question': question,
-            'faq': None,
-            'institutions': [],
+            'no_match': True
         })
 
-    # 4. Utiliser GeoService pour trouver les institutions proches
-    # Coordonnées par défaut — Casablanca
-    geo = MockGeoService()
-    institutions = geo.nearest(faq.category, 33.5731, -7.5898)
+    # Géolocalisation
+    geo_service = MockGeoService()
+    nearest_institutions = geo_service.nearest(
+        topic=result['category'],
+        lat=33.5731,
+        lon=-7.5898,
+        max_results=3
+    )
 
-    # 5. Afficher la page réponse
-    return render(request, 'knowledge/reponse.html', {
+    context = {
         'question': question,
-        'faq': faq,
-        'institutions': institutions,
-    })
+        'answer_darija': result['answer'],
+        'legal_reference': result['legal_reference'],
+        'disclaimer': result['disclaimer'],
+        'institutions': nearest_institutions,
+        'text_dir': result['direction'],
+        'text_lang': result['lang'],
+    }
+
+    return render(request, 'knowledge/reponse.html', context)
