@@ -23,13 +23,13 @@ class GeminiNLUService:
         is_arabic = any('\u0600' <= char <= '\u06FF' for char in text)
         direction = "rtl" if is_arabic else "ltr"
         lang = "ar" if is_arabic else "fr"
-        format_ecriture = "arabe marocain darija" if is_arabic else "Arabizi (darija en lettres latines)"
 
         from knowledge.models import LegalDocument
         from django.db.models import Q
 
         words = text.lower().replace('?', '').replace('!', '').split()
 
+        # Mapping arabizi → mots français pour chercher dans les PDFs
         search_mapping = {
             'travail': ['travail', 'licenciement', 'salarié', 'employeur', 'contrat'],
             'khedma': ['travail', 'licenciement', 'salarié'],
@@ -42,6 +42,11 @@ class GeminiNLUService:
             'irs': ['succession', 'héritage', 'héritier'],
             'kra': ['bail', 'location', 'loyer', 'locataire'],
             'tribunal': ['tribunal', 'juridiction', 'procédure'],
+            'بطاقة': ['identité', 'carte nationale', 'renouvellement'],
+            'تجديد': ['renouvellement', 'carte nationale', 'identité'],
+            'عقد': ['contrat', 'bail', 'travail'],
+            'طلاق': ['divorce', 'répudiation', 'dissolution'],
+            'ميراث': ['héritage', 'succession', 'héritier'],
         }
 
         search_terms = []
@@ -55,7 +60,7 @@ class GeminiNLUService:
         for term in search_terms[:8]:
             query |= Q(content__icontains=term)
 
-        travail_words = ['tardoni', 'khedma', 'travail', 'licenci', 'salari']
+        travail_words = ['tardoni', 'khedma', 'travail', 'licenci', 'salari', 'عمل', 'شغل']
         is_travail = any(w in text.lower() for w in travail_words)
 
         if is_travail:
@@ -75,24 +80,27 @@ class GeminiNLUService:
         else:
             context = "Aucun document juridique trouvé pour cette question."
 
-        prompt = f"""Rôle : Tu es un assistant juridique marocain expert.
-Tu as accès aux vrais textes de loi marocains ci-dessous.
+        prompt = f"""أنت مساعد قانوني مغربي متخصص في القانون المغربي.
+لديك إمكانية الوصول إلى الوثائق القانونية الرسمية التالية:
 
-DOCUMENTS JURIDIQUES OFFICIELS :
 {context}
 
-L'utilisateur t'a posé cette question en {format_ecriture} :
+سألك المستخدم هذا السؤال:
 "{text}"
 
-En te basant UNIQUEMENT sur les documents ci-dessus, réponds en {format_ecriture}.
-Utilise le vocabulaire darija marocain authentique.
+تعليمات مهمة:
+1. أجب فقط بناءً على المعلومات الموجودة في الوثائق أعلاه
+2. أجب باللغة العربية الفصحى البسيطة والواضحة
+3. استخدم مصطلحات قانونية مغربية صحيحة
+4. إذا لم تجد المعلومة في الوثائق، قل ذلك بوضوح
+5. الجواب يجب أن يكون قصيراً (3 جمل maximum)
 
-Retourne UNIQUEMENT ce JSON sans rien d'autre :
+أرجع فقط هذا JSON بدون أي نص إضافي:
 {{
-    "category": "cin ou naissance ou location ou travail ou tribunal ou heritage ou cnss ou autre",
-    "answer": "réponse en {format_ecriture} basée sur les vrais textes de loi (max 3 phrases)",
-    "legal_reference": "la référence exacte trouvée dans les documents",
-    "disclaimer": "tanbih: had lma3loumat ghir llisti2nas, makat3wedch istichara 9anouniya rasmiya"
+    "category": "cin أو naissance أو location أو travail أو tribunal أو heritage أو cnss أو autre",
+    "answer": "الجواب بالعربية الفصحى البسيطة بناءً على الوثائق",
+    "legal_reference": "المرجع القانوني الدقيق من الوثائق",
+    "disclaimer": "تنبيه: هذه المعلومات للاستئناس فقط وليست استشارة قانونية رسمية"
 }}"""
 
         try:
